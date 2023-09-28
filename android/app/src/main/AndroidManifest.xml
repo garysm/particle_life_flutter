@@ -1,6 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.particle_life_flutter">
-   <application
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application
         android:label="particle_life_flutter"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
