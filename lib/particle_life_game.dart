@@ -13,8 +13,6 @@ class ParticleLifeGame extends FlameGame
 
   late final CameraComponent cameraComponent;
 
-  static const double screenWidth = 800;
-  static const double screenHeight = 600;
   static const int particlesCount = 100;
 
   final world = World();
@@ -23,13 +21,13 @@ class ParticleLifeGame extends FlameGame
   Future<void> onLoad() async {
     await add(world);
     cameraComponent = CameraComponent.withFixedResolution(
-      width: screenWidth,
-      height: screenHeight,
+      width: kScreenWidth,
+      height: kSreenHeight,
       world: world,
     );
     cameraComponent.viewfinder.anchor = Anchor.topLeft;
     await add(cameraComponent);
-    world.add(Background());
+    world.add(ParticleLifeMap());
     // generate a list of particles in different positions in the screen size.  The positions should not be too close to the edges.
     final random = Random();
     final List<Particle> particles = _seedParticles(random);
@@ -41,8 +39,8 @@ class ParticleLifeGame extends FlameGame
     return List.generate(
       particlesCount,
       (index) {
-        final x = random.nextDouble() * (screenWidth - 20) + 10;
-        final y = random.nextDouble() * (screenHeight - 20) + 10;
+        final x = random.nextDouble() * (kScreenWidth - 20) + 10;
+        final y = random.nextDouble() * (kSreenHeight - 20) + 10;
         return Particle(
           index,
           position: Vector2(
@@ -56,13 +54,15 @@ class ParticleLifeGame extends FlameGame
 }
 
 class Particle extends PositionComponent with HasGameRef<ParticleLifeGame> {
+  final int id;
+  final double radius = 2.5;
+  Vector2 _velocity = Vector2.zero();
+
   Particle(this.id, {required super.position})
       : super(
-          size: Vector2.all(5),
+          size: Vector2.all(2 * 2.5),
           anchor: Anchor.center,
         );
-
-  final int id;
 
   @override
   void render(Canvas canvas) {
@@ -85,26 +85,80 @@ class Particle extends PositionComponent with HasGameRef<ParticleLifeGame> {
         return distance < 100;
       },
     );
+
+    for (final particle in nearbyParticles) {
+      // create an attraction force to each nearby particle.  Do not allow the particles to get too close.
+      final distance = (particle.position - position).length;
+      final force = _force(distance, 10, 100, 0.1);
+      final direction = (particle.position - position).normalized();
+      _velocity += direction * force;
+    }
+
+    // Update position based on velocity
+    position.x += _velocity.x * dt;
+    position.y += _velocity.y * dt;
+
+    _establishPositionBounds();
+  }
+
+  void _establishPositionBounds() {
+    final double maxXPosition = kScreenWidth - radius * 2;
+    final double maxYPosition = kSreenHeight - radius * 2;
+    final double minXPosition = radius * 2;
+    final double minYPosition = radius * 2;
+
+    if (position.x <= minXPosition) {
+      position.x = minXPosition;
+    }
+    if (position.x >= maxXPosition) {
+      position.x = maxXPosition;
+    }
+    if (position.y <= minYPosition) {
+      position.y = minYPosition;
+    }
+    if (position.y >= maxYPosition) {
+      position.y = maxYPosition;
+    }
+  }
+
+  double _force(
+      double distance, double rMin, double? rMax, double? attraction) {
+    if (distance < rMin) {
+      return distance / rMin - 1;
+    }
+
+    if (distance < rMax!) {
+      return attraction! *
+          (1 - (2 * distance - rMin - rMax).abs() / (rMax - rMin));
+    }
+
+    return 0;
   }
 }
 
-class Background extends PositionComponent {
-  @override
-  int priority = -1;
+const double kScreenWidth = 800;
+const double kSreenHeight = 600;
+const kMapBounds = Rect.fromLTRB(
+  -kScreenWidth / 2,
+  -kSreenHeight / 2,
+  kScreenWidth / 2,
+  kSreenHeight / 2,
+);
 
-  late Paint black;
-  late final Rect hugeRect;
-
-  Background() : super(size: Vector2.all(100000), anchor: Anchor.center);
-
-  @override
-  Future<void> onLoad() async {
-    black = BasicPalette.black.paint();
-    hugeRect = size.toRect();
-  }
+class ParticleLifeMap extends Component {
+  static final Paint _background = BasicPalette.black.paint();
 
   @override
   void render(Canvas canvas) {
-    canvas.drawRect(hugeRect, black);
+    super.render(canvas);
+    canvas.drawRect(
+      Rect.fromLTRB(
+        kMapBounds.left,
+        kMapBounds.top,
+        kMapBounds.right,
+        kMapBounds.bottom,
+      ),
+      _background,
+    );
   }
 }
