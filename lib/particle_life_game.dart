@@ -76,7 +76,8 @@ class Particle extends PositionComponent with HasGameRef<ParticleLifeGame> {
 
   @override
   void update(double dt) {
-    final allParticles = gameRef.world.children.query<Particle>();
+    final List<Particle> allParticles =
+        gameRef.world.children.query<Particle>();
     final otherParticles = allParticles.where((particle) => particle.id != id);
 
     final nearbyParticles = otherParticles.where(
@@ -87,14 +88,15 @@ class Particle extends PositionComponent with HasGameRef<ParticleLifeGame> {
     );
 
     for (final particle in nearbyParticles) {
-      // create an attraction force to each nearby particle.  Do not allow the particles to get too close.
-      final distance = (particle.position - position).length;
-      final force = _force(distance, 10, 100, 0.1);
-      final direction = (particle.position - position).normalized();
+      final double distance = (particle.position - position).length;
+      // TODO: Calculate force based on the matrix
+      final double force = _force(distance, 10, 40, 0.1);
+      final Vector2 direction = (particle.position - position).normalized();
       _velocity += direction * force;
+      // TODO: Friction
+      // TODO: Heat
     }
 
-    // Update position based on velocity
     position.x += _velocity.x * dt;
     position.y += _velocity.y * dt;
 
@@ -122,13 +124,17 @@ class Particle extends PositionComponent with HasGameRef<ParticleLifeGame> {
   }
 
   double _force(
-      double distance, double rMin, double? rMax, double? attraction) {
+    double distance,
+    double rMin,
+    double rMax,
+    double attraction,
+  ) {
     if (distance < rMin) {
       return distance / rMin - 1;
     }
 
-    if (distance < rMax!) {
-      return attraction! *
+    if (distance < rMax) {
+      return attraction *
           (1 - (2 * distance - rMin - rMax).abs() / (rMax - rMin));
     }
 
